@@ -2,19 +2,21 @@
 import os.path
 import re
 
-#fn = input("Filename: ")
+"""
 
-#if not (os.path.isfile(fn)):
-#    print("File doesn't exists.")
-#    quit()
+fn = input("Filename: ")
 
-#file = open(fn, "r")
+if not (os.path.isfile(fn)):
+    print("File doesn't exists.")
+    quit()
 
-#for line in file:
-#    if (re.search("^\d{1,3}\.", line)):
-#        os.system("ping " + line)
+file = open(fn, "r")
 
-#file.close();
+for line in file:
+    if (re.search("^\d{1,3}\.", line)):
+        os.system("ping " + line)
+
+file.close();
 
 while (1):
     myIn = input("")
@@ -22,3 +24,5 @@ while (1):
         myIn = int(myIn)
         if (myIn > 0 and myIn < 13):
             print("Moo\n\n\n")
+
+"""
