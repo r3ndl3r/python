@@ -1,3 +1,5 @@
+# install google-api-python-client google-auth-oauthlib
+
 import datetime
 import re
 import sys
