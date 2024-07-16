@@ -1,12 +1,11 @@
 # Head to https://developers.google.com/docs/api/quickstart/python and follow steps:
-# Enable the API > Configure OAuth consent > Authorize credentials for a desktop application > Save the downloaded JSON file as credentials.json in same folder as script.
+# Enable the API > Configure OAuth consent > Authorize credentials for a desktop application > Save the downloaded JSON file as credentials.json
 #
 # Make sure required python modules are installed:
 # pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
 # 
 # Set DOCS_URL variable to your Google Docs document where the timetable data is stored.
-# 
-# Run script.
+#
 
 import os
 import pickle
@@ -21,7 +20,7 @@ from googleapiclient.errors import HttpError
 
 # Global variables
 TIMEZONE = 'Australia/Melbourne'
-DOCS_URL = 'https://docs.google.com/document/d/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+DOCS_URL = 'https://docs.google.com/document/d/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 SCOPES = ['https://www.googleapis.com/auth/documents.readonly', 'https://www.googleapis.com/auth/calendar']
 TOKEN_PICKLE_PATH = 'token.pickle'
 CREDENTIALS_JSON_PATH = 'credentials.json'
@@ -148,7 +147,7 @@ def create_event(service, calendar_id, day, start_datetime, end_datetime):
     }
     try:
         event = service.events().insert(calendarId=calendar_id, body=event).execute()
-        print(f"Processed 'Work' event on {day}, {start_datetime.strftime('%Y-%m-%d %H:%M')} to {end_datetime.strftime('%H:%M')}")
+        print(f"-> {day}, {start_datetime.strftime('%Y-%m-%d %H:%M')} to {end_datetime.strftime('%H:%M')}")
     except HttpError as err:
         logging.error(f"HTTP error occurred while creating event: {err.content}")
 
