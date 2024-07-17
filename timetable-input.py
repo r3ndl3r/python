@@ -1,3 +1,9 @@
+# Head to https://developers.google.com/docs/api/quickstart/python and follow steps:
+# Enable the API > Configure OAuth consent > Authorize credentials for a desktop application > Save the downloaded JSON file as credentials.json
+#
+# Make sure required python modules are installed:
+# pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+#
 import os
 import pickle
 import sys
