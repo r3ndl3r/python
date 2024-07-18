@@ -23,9 +23,14 @@ CREDENTIALS_JSON_PATH = 'credentials.json'
 DOCS_URL_FILE = 'docs.url'
 GOOGLE_API_CREDENTIALS_URL = 'https://developers.google.com/docs/api/quickstart/python'
 
-logging.basicConfig(level=logging.WARNING)  # Set logging level to WARNING by default
+# Set logging level to WARNING by default
+logging.basicConfig(level=logging.WARNING)
 
 def authenticate_google():
+    """
+    Authenticate the user with Google API and return the credentials.
+    This function handles the OAuth2 flow and stores the credentials in a token.pickle file.
+    """
     creds = None
     if os.path.exists(TOKEN_PICKLE_PATH):
         with open(TOKEN_PICKLE_PATH, 'rb') as token:
@@ -45,7 +50,11 @@ def authenticate_google():
     return creds
 
 def get_docs_url():
-    """Get the Google Docs URL from the file or prompt the user if not available."""
+    """
+    Get the Google Docs URL from the file or prompt the user if not available.
+    This function reads the URL from a file named 'docs.url'. If the file does not exist or is empty,
+    it prompts the user for the URL and saves it to the file.
+    """
     if os.path.exists(DOCS_URL_FILE):
         with open(DOCS_URL_FILE, 'r') as file:
             url = file.read().strip()
@@ -59,6 +68,10 @@ def get_docs_url():
     return url
 
 def read_google_doc(doc_id, service):
+    """
+    Read the content of a Google Doc and return it as a string.
+    This function retrieves the content of the specified Google Doc and concatenates all text elements into a single string.
+    """
     document = service.documents().get(documentId=doc_id).execute()
     doc_content = document.get('body').get('content')
     lines = []
@@ -71,6 +84,11 @@ def read_google_doc(doc_id, service):
     return '\n'.join(lines)
 
 def parse_schedule(input_data):
+    """
+    Parse the schedule from the input data.
+    This function extracts the schedule information from the input text and returns a list of tuples containing
+    the day of the week, start datetime, and end datetime for each schedule entry.
+    """
     schedule = []
     day_map = {"Mo": "Monday", "Tu": "Tuesday", "We": "Wednesday", "Th": "Thursday", "Fr": "Friday"}
     pattern = re.compile(r'^(Mo|Tu|We|Th|Fr) (\d{1,2}/\d{1,2}): (\d{2}:\d{2})->(\d{2}:\d{2})$')
@@ -87,6 +105,7 @@ def parse_schedule(input_data):
                 start_time = match.group(3)
                 end_time = match.group(4)
                 
+                # Parse date and time
                 date_obj = datetime.datetime.strptime(date_str, '%d/%m')
                 current_year = datetime.datetime.now().year
                 start_datetime = datetime.datetime.combine(date_obj.replace(year=current_year),
@@ -94,6 +113,7 @@ def parse_schedule(input_data):
                 end_datetime = datetime.datetime.combine(date_obj.replace(year=current_year),
                                                          datetime.datetime.strptime(end_time, '%H:%M').time())
                 
+                # Adjust for day of the week
                 day_of_week = day_map[day]
                 while start_datetime.weekday() != list(day_map.keys()).index(day):
                     start_datetime += datetime.timedelta(days=1)
@@ -105,6 +125,10 @@ def parse_schedule(input_data):
     return schedule
 
 def delete_existing_work_events(service, calendar_id, date):
+    """
+    Delete existing work events on the specified date.
+    This function removes all events with the summary 'Work' from the Google Calendar on the specified date.
+    """
     start_datetime = datetime.datetime.combine(date, datetime.time.min).isoformat() + 'Z'
     end_datetime = datetime.datetime.combine(date, datetime.time.max).isoformat() + 'Z'
     try:
@@ -128,6 +152,10 @@ def delete_existing_work_events(service, calendar_id, date):
         logging.error(f"Failed to query events for {date}. Error: {e}")
 
 def create_event(service, calendar_id, day, start_datetime, end_datetime):
+    """
+    Create a new work event in the calendar.
+    This function adds a new event with the summary 'Work' to the Google Calendar with the specified start and end times.
+    """
     event = {
         'summary': 'Work',
         'start': {
@@ -141,12 +169,15 @@ def create_event(service, calendar_id, day, start_datetime, end_datetime):
     }
     try:
         event = service.events().insert(calendarId=calendar_id, body=event).execute()
-        print(f"-> {day}, {start_datetime.strftime('%Y-%m-%d [%H:%M')} -> {end_datetime.strftime('%H:%M')}]")
+        print(f"-> {day}, {start_datetime.strftime('%Y-%m-%d %H:%M')} to {end_datetime.strftime('%H:%M')}")
     except HttpError as err:
         logging.error(f"HTTP error occurred while creating event: {err.content}")
 
 def clear_document(service, document_id):
-    """Clear the entire content of the Google Document."""
+    """
+    Clear the entire content of the Google Document.
+    This function deletes all content from the specified Google Document.
+    """
     try:
         # Get the current content of the document
         document = service.documents().get(documentId=document_id).execute()
@@ -169,7 +200,10 @@ def clear_document(service, document_id):
         logging.error(f"An error occurred while clearing the document: {err}")
 
 def insert_pastehere(service, document_id):
-    """Insert 'PASTEHERE' at the beginning of the document."""
+    """
+    Insert 'PASTEHERE' at the beginning of the document.
+    This function adds the text 'PASTEHERE' to the start of the specified Google Document.
+    """
     requests = [
         {
             'insertText': {
@@ -187,6 +221,9 @@ def insert_pastehere(service, document_id):
         logging.error(f"An error occurred while inserting 'PASTEHERE': {err}")
 
 def main():
+    """
+    Main function to authenticate, read schedule, parse it, update the calendar, clear the document, and insert 'PASTEHERE'.
+    """
     creds = authenticate_google()
     if not creds:
         return
