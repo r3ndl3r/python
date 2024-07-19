@@ -1,7 +1,7 @@
-# Head to https://developers.google.com/docs/api/quickstart/python and follow steps:
+# Head to https://developers.google.com/docs/api/quickstart/python and follow these steps:
 # Enable the API > Configure OAuth consent > Authorize credentials for a desktop application > Save the downloaded JSON file as credentials.json
 
-# Make sure required python modules are installed:
+# Ensure required Python modules are installed:
 # pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
 import os
@@ -24,6 +24,7 @@ DOCS_URL_FILE = 'docs.url'
 GOOGLE_API_CREDENTIALS_URL = 'https://developers.google.com/docs/api/quickstart/python'
 
 # Set logging level to WARNING by default
+# logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.WARNING)
 
 def authenticate_google():
@@ -72,16 +73,20 @@ def read_google_doc(doc_id, service):
     Read the content of a Google Doc and return it as a string.
     This function retrieves the content of the specified Google Doc and concatenates all text elements into a single string.
     """
-    document = service.documents().get(documentId=doc_id).execute()
-    doc_content = document.get('body').get('content')
-    lines = []
-    for element in doc_content:
-        if 'paragraph' in element:
-            elements = element['paragraph']['elements']
-            for elem in elements:
-                if 'textRun' in elem:
-                    lines.append(elem['textRun']['content'])
-    return '\n'.join(lines)
+    try:
+        document = service.documents().get(documentId=doc_id).execute()
+        doc_content = document.get('body').get('content')
+        lines = []
+        for element in doc_content:
+            if 'paragraph' in element:
+                elements = element['paragraph']['elements']
+                for elem in elements:
+                    if 'textRun' in elem:
+                        lines.append(elem['textRun']['content'])
+        return '\n'.join(lines)
+    except HttpError as err:
+        logging.error(f"HTTP error occurred while reading the document: {err}")
+        return ""
 
 def parse_schedule(input_data):
     """
@@ -220,40 +225,70 @@ def insert_pastehere(service, document_id):
     except HttpError as err:
         logging.error(f"An error occurred while inserting 'PASTEHERE': {err}")
 
+def check_pastehere_exists(service, document_id):
+    """
+    Check if 'PASTEHERE' is already present in the document.
+    This function reads the content of the specified Google Document and checks if 'PASTEHERE' exists.
+    If 'PASTEHERE' is found, the function returns True, otherwise False.
+    """
+    try:
+        document = service.documents().get(documentId=document_id).execute()
+        doc_content = document.get('body').get('content')
+        for element in doc_content:
+            if 'paragraph' in element:
+                elements = element['paragraph']['elements']
+                for elem in elements:
+                    if 'textRun' in elem and 'PASTEHERE' in elem['textRun']['content']:
+                        return True
+    except HttpError as err:
+        logging.error(f"HTTP error occurred while checking for 'PASTEHERE': {err}")
+    return False
+
 def main():
     """
-    Main function to authenticate, read schedule, parse it, update the calendar, clear the document, and insert 'PASTEHERE'.
+    Main function to run the script.
+    This function orchestrates the authentication, document reading, schedule parsing, calendar management,
+    document clearing, and 'PASTEHERE' insertion processes.
     """
+    # Authenticate with Google API
     creds = authenticate_google()
     if not creds:
+        logging.error("Failed to authenticate with Google API.")
         return
 
-    docs_service = build('docs', 'v1', credentials=creds)
-    calendar_service = build('calendar', 'v3', credentials=creds)
-    
-    # Get the Google Docs URL
-    docs_url = get_docs_url()
-    doc_id = docs_url.split('/')[-2]
+    try:
+        # Build the Docs and Calendar services
+        docs_service = build('docs', 'v1', credentials=creds)
+        calendar_service = build('calendar', 'v3', credentials=creds)
 
-    print("Reading schedule from Google Docs...")
-    input_data = read_google_doc(doc_id, docs_service)
-    schedule = parse_schedule(input_data)
+        # Get Google Docs URL and extract document ID
+        docs_url = get_docs_url()
+        match = re.search(r'/d/([a-zA-Z0-9-_]+)', docs_url)
+        if not match:
+            logging.error("Invalid Google Docs URL.")
+            return
+        document_id = match.group(1)
 
-    print(f"\nParsed schedule: {schedule}\n")
-    if not schedule:
-        print("No valid schedule data found.")
-        return
+        # Check if 'PASTEHERE' is already in the document
+        if check_pastehere_exists(docs_service, document_id):
+            print("'PASTEHERE' already exists in the document. Exiting script.")
+            return
 
-    calendar_id = 'primary'
-    for day, start_datetime, end_datetime in schedule:
-        delete_existing_work_events(calendar_service, calendar_id, start_datetime.date())
-        create_event(calendar_service, calendar_id, day, start_datetime, end_datetime)
+        # Read and parse schedule from Google Docs
+        input_data = read_google_doc(document_id, docs_service)
+        schedule = parse_schedule(input_data)
 
-    # Clear the entire document
-    clear_document(docs_service, doc_id)
+        # Process each schedule entry
+        calendar_id = 'primary'
+        for day, start_datetime, end_datetime in schedule:
+            delete_existing_work_events(calendar_service, calendar_id, start_datetime.date())
+            create_event(calendar_service, calendar_id, day, start_datetime, end_datetime)
 
-    # Insert 'PASTEHERE' at the beginning of the document
-    insert_pastehere(docs_service, doc_id)
+        # Clear the document and insert 'PASTEHERE'
+        clear_document(docs_service, document_id)
+        insert_pastehere(docs_service, document_id)
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}")
 
 if __name__ == '__main__':
     main()
